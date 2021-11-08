@@ -2,7 +2,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog
 from os import listdir
 from os.path import isfile, join
-
+#comment
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -83,10 +83,9 @@ class Ui_MainWindow(object):
         self.remove_btn.setText(_translate("MainWindow", "Remove"))
 
         #do tego trzeba zrobic okienko z wybieraniem directory i te mydir ma byc pobierane przez klikniecie na wybrany folder
-        self.mydir= "/Users/martaadamczyk/Desktop/img"
+        self.mydir= "/Users/karol/Desktop/img"
         self.photo_displayed= 0
         self.files= [f for f in listdir(self.mydir) if isfile(join(self.mydir, f))]
-        self.files.remove(".DS_Store")
         print(self.files)
 
     #przelaczenie na kolejne zdjecie
