@@ -2,7 +2,6 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog
 from os import listdir
 from os.path import isfile, join
-#comment
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -83,11 +82,6 @@ class Ui_MainWindow(object):
         self.edit_btn.setText(_translate("MainWindow", "Edit"))
         self.remove_btn.setText(_translate("MainWindow", "Remove"))
 
-        #do tego trzeba zrobic okienko z wybieraniem directory i te mydir ma byc pobierane przez klikniecie na wybrany folder
-        self.mydir= "/Users/karol/Desktop/img"
-        self.photo_displayed= 0
-        self.files= [f for f in listdir(self.mydir) if isfile(join(self.mydir, f))]
-        print(self.files)
 
     #przelaczenie na kolejne zdjecie
     #do zrobienia: zmienianie sie listy z boxami przy zmianie zdjecia
@@ -95,7 +89,7 @@ class Ui_MainWindow(object):
         self.photo_displayed+=1
         if self.photo_displayed>=len(self.files):
             self.photo_displayed=0
-        self.photo.setPixmap(QtGui.QPixmap("{}/{}".format(self.mydir, self.files[self.photo_displayed])))
+        self.photo.setPixmap(QtGui.QPixmap("{}/{}".format(self.chosen_dir, self.files[self.photo_displayed])))
 
     #przelaczanie na poprzednie zdjecie
     #do zrobienia zmienianie sie listy z boxami przy zmianie zdjecia
@@ -103,11 +97,21 @@ class Ui_MainWindow(object):
         self.photo_displayed-=1
         if self.photo_displayed<0:
             self.photo_displayed=len(self.files)-1
-        self.photo.setPixmap(QtGui.QPixmap("{}/{}".format(self.mydir, self.files[self.photo_displayed])))
+        self.photo.setPixmap(QtGui.QPixmap("{}/{}".format(self.chosen_dir, self.files[self.photo_displayed])))
 
     def open_directory(self):
-        print("otwarte")
         #otwieranie folderow i wybranie folderu tu bedzie
+        try:
+            self.chosen_dir = QtWidgets.QFileDialog.getExistingDirectory(None, 'Select project folder:', '',
+                                                              QtWidgets.QFileDialog.ShowDirsOnly)
+
+            print(self.chosen_dir)
+            self.photo_displayed = 0
+            self.files = [f for f in listdir(self.chosen_dir) if isfile(join(self.chosen_dir, f))
+                          and f.lower().endswith(('.png', '.jpg', '.jpeg', '.pneg'))]
+            print(self.files)
+        except:
+            pass
 
     def save(self):
         pass
