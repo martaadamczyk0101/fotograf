@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QFileDialog
 from os import listdir
 from os.path import isfile, join
 #comment
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
