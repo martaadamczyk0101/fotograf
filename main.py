@@ -1,13 +1,26 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 from os import listdir
 from os.path import isfile, join
+import sys
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(800, 600)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
+class Ui_MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.list_of_labels = []
+        self.rectangles = []
+        self.photo_displayed = 0
+
+        self.window = MainWindow
+
+        self.window_width, self.window_height = 800, 600
+        self.setMinimumSize(self.window_width, self.window_height)
+        self.setWindowTitle('Fotograf')
+
+        self.centralwidget = QtWidgets.QWidget(self.window)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayoutWidget = QtWidgets.QWidget(self.centralwidget)
         self.gridLayoutWidget.setGeometry(QtCore.QRect(639, 0, 161, 201))
@@ -33,9 +46,9 @@ class Ui_MainWindow(object):
         self.photo = QtWidgets.QLabel(self.centralwidget)
         self.photo.setGeometry(QtCore.QRect(-1, -5, 641, 531))
         self.photo.setText("")
-        self.photo.setPixmap(QtGui.QPixmap("/Users/martaadamczyk/Desktop/img/img1.jpg"))
         self.photo.setScaledContents(True)
         self.photo.setObjectName("photo")
+        self.current_photo = QPixmap('grape.jpg')
         self.prev = QtWidgets.QPushButton(self.centralwidget)
         self.prev.setGeometry(QtCore.QRect(240, 530, 81, 32))
         self.prev.setObjectName("prev")
@@ -48,14 +61,15 @@ class Ui_MainWindow(object):
         self.remove_btn = QtWidgets.QPushButton(self.centralwidget)
         self.remove_btn.setGeometry(QtCore.QRect(720, 210, 71, 32))
         self.remove_btn.setObjectName("remove_btn")
-        MainWindow.setCentralWidget(self.centralwidget)
+        self.window.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 22))
         self.menubar.setObjectName("menubar")
-        MainWindow.setMenuBar(self.menubar)
+        self.window.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
+        self.window.setStatusBar(self.statusbar)
+        self.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -69,6 +83,12 @@ class Ui_MainWindow(object):
         self.edit_btn.clicked.connect(self.edit_label)
         self.remove_btn.clicked.connect(self.remove_label)
 
+        self.begin = QtCore.QPoint()
+        self.end = QtCore.QPoint()
+        self.selecting = False
+
+        self.show()
+
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -76,7 +96,7 @@ class Ui_MainWindow(object):
         self.open_btn.setText(_translate("MainWindow", "Open"))
         self.save_btn.setText(_translate("MainWindow", "Save"))
         self.stats_btn.setText(_translate("MainWindow", "Show Statistics"))
-        self.select_btn.setText(_translate("MainWindow", "Select"))
+        self.select_btn.setText(_translate("MainWindow", "Draw labels"))
         self.prev.setText(_translate("MainWindow", "<<"))
         self.next.setText(_translate("MainWindow", ">>"))
         self.edit_btn.setText(_translate("MainWindow", "Edit"))
@@ -86,18 +106,34 @@ class Ui_MainWindow(object):
     #przelaczenie na kolejne zdjecie
     #do zrobienia: zmienianie sie listy z boxami przy zmianie zdjecia
     def next_photo(self):
-        self.photo_displayed+=1
-        if self.photo_displayed>=len(self.files):
-            self.photo_displayed=0
-        self.photo.setPixmap(QtGui.QPixmap("{}/{}".format(self.chosen_dir, self.files[self.photo_displayed])))
+        try:
+            self.photo_displayed += 1
+            if self.photo_displayed >= len(self.files):
+                self.photo_displayed = 0
+            self.current_photo = QtGui.QPixmap("{}/{}".format(self.chosen_dir, self.files[self.photo_displayed]))
+            self.photo.setPixmap(self.current_photo)
+            self.selecting = False
+            self.select_btn.setText("Draw labels")
+            self.rectangles = []
+        except:
+            print("Brak załadowanego folderu")
+
 
     #przelaczanie na poprzednie zdjecie
     #do zrobienia zmienianie sie listy z boxami przy zmianie zdjecia
     def prev_photo(self):
-        self.photo_displayed-=1
-        if self.photo_displayed<0:
-            self.photo_displayed=len(self.files)-1
-        self.photo.setPixmap(QtGui.QPixmap("{}/{}".format(self.chosen_dir, self.files[self.photo_displayed])))
+        try:
+            self.photo_displayed -= 1
+            if self.photo_displayed < 0:
+                self.photo_displayed = len(self.files)-1
+            self.current_photo = QtGui.QPixmap("{}/{}".format(self.chosen_dir, self.files[self.photo_displayed]))
+            self.photo.setPixmap(self.current_photo)
+            self.selecting = False
+            self.select_btn.setText("Draw labels")
+            self.rectangles = []
+        except:
+            print("Brak załadowanego folderu")
+
 
     def open_directory(self):
         #otwieranie folderow i wybranie folderu tu bedzie
@@ -106,10 +142,10 @@ class Ui_MainWindow(object):
                                                               QtWidgets.QFileDialog.ShowDirsOnly)
 
             print(self.chosen_dir)
-            self.photo_displayed = 0
             self.files = [f for f in listdir(self.chosen_dir) if isfile(join(self.chosen_dir, f))
                           and f.lower().endswith(('.png', '.jpg', '.jpeg', '.pneg'))]
             print(self.files)
+            self.photo.setPixmap(self.current_photo)
         except:
             pass
 
@@ -118,7 +154,20 @@ class Ui_MainWindow(object):
         #zapisywanie
 
     def select(self):
-        pass
+        if not self.selecting:
+            self.selecting = True
+            self.begin = QPoint()
+            self.end = QPoint()
+            self.select_btn.setText("Drawing labels...")
+            print('Drawing mode - true')
+            self.photo.clear()
+
+        elif self.selecting:
+            self.selecting = False
+            self.select_btn.setText("Draw labels")
+            print('Drawing mode - false')
+            self.photo.setPixmap(self.current_photo)
+
         #przelaczenie na tryb rysowania bounding boxow
 
     def show_stats(self):
@@ -133,11 +182,48 @@ class Ui_MainWindow(object):
         pass
         #usuniecie zaznaczonego bounding boxa
 
+    def save_rect(self, name, begin, end, photo_id):
+        self.list_of_labels.append([name, begin, end, photo_id])
+
+    def paintEvent(self, event):
+        if self.selecting:
+            super().paintEvent(event)
+            qp = QPainter(self)
+            qp.drawPixmap(QRect(-1, -5, 641, 531), self.current_photo)
+            br = QBrush(QColor(255, 10, 10, 10))
+            qp.setBrush(br)
+
+            for rectangle in self.rectangles:
+                qp.drawRect(rectangle)
+
+            if not self.begin.isNull() and not self.end.isNull():
+                qp.drawRect(QRect(self.begin, self.end).normalized())
+
+    def mousePressEvent(self, event):
+        if self.selecting:
+            self.begin = event.pos()
+
+    def mouseMoveEvent(self, event):
+        if self.selecting:
+            self.end = event.pos()
+            self.update()
+
+    def mouseReleaseEvent(self, event):
+        if self.selecting:
+            self.end = event.pos()
+            r = QRect(self.begin, self.end).normalized()
+            self.rectangles.append(r)
+
+            self.textbox = QLineEdit(self)
+            self.label_name, ok = QInputDialog.getText(self, 'Name label', 'Enter your label name:')
+            if ok:
+                self.save_rect(self.label_name, self.begin, self.end, self.photo_displayed)
+
+            print (self.list_of_labels)
+
+
 if __name__ == "__main__":
-    import sys
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
     sys.exit(app.exec_())
