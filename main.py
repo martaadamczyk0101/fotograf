@@ -175,11 +175,27 @@ class Ui_MainWindow(QMainWindow):
         #wyswietlanie statystyk
 
     def edit_label(self):
-        pass
+        if not self.canvas.editing():
+            return
+        item = self.current_item()
+        if not item:
+            return
+        text = self.label_dialog.pop_up(item.text())
+        if text is not None:
+            item.setText(text)
+            item.setBackground(generate_color_by_text(text))
+            self.set_dirty()
+            self.update_combo_box()
         #edycja nazwy bounding boxa
 
     def remove_label(self):
-        pass
+        if shape is None:
+            return
+        item = self.shapes_to_items[shape]
+        self.label_list.takeItem(self.label_list.row(item))
+        del self.shapes_to_items[shape]
+        del self.items_to_shapes[item]
+        self.update_combo_box()
         #usuniecie zaznaczonego bounding boxa
 
     def save_rect(self, name, begin, end, photo_id):
