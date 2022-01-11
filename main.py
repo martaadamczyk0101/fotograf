@@ -5,6 +5,7 @@ from PyQt5.QtGui import *
 from os import listdir
 from os.path import isfile, join
 import sys
+import re
 
 class Ui_MainWindow(QMainWindow):
     def __init__(self):
@@ -28,6 +29,7 @@ class Ui_MainWindow(QMainWindow):
         self.gridLayout = QtWidgets.QGridLayout(self.gridLayoutWidget)
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
         self.gridLayout.setObjectName("gridLayout")
+
         self.open_btn = QtWidgets.QPushButton(self.gridLayoutWidget)
         self.open_btn.setObjectName("open_btn")
         self.gridLayout.addWidget(self.open_btn, 0, 0, 1, 1)
@@ -61,6 +63,12 @@ class Ui_MainWindow(QMainWindow):
         self.remove_btn = QtWidgets.QPushButton(self.centralwidget)
         self.remove_btn.setGeometry(QtCore.QRect(720, 210, 71, 32))
         self.remove_btn.setObjectName("remove_btn")
+
+        self.description = QLabel(self)
+
+        self.listwidget = QListWidget(self.centralwidget)
+        self.listwidget.setGeometry(QtCore.QRect(650, 250, 142, 300))
+
         self.window.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 22))
@@ -75,6 +83,7 @@ class Ui_MainWindow(QMainWindow):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
         #laczenie przyciskow z metodami
+        self.listwidget.itemClicked.connect(self.highlight_label)
         self.next.clicked.connect(self.next_photo)
         self.prev.clicked.connect(self.prev_photo)
         self.open_btn.clicked.connect(self.open_directory)
@@ -175,38 +184,49 @@ class Ui_MainWindow(QMainWindow):
         #wyswietlanie statystyk
 
     def edit_label(self):
-        if not self.canvas.editing():
-            return
-        item = self.current_item()
-        if not item:
-            return
-        text = self.label_dialog.pop_up(item.text())
-        if text is not None:
-            item.setText(text)
-            item.setBackground(generate_color_by_text(text))
-            self.set_dirty()
-            self.update_combo_box()
-        #edycja nazwy bounding boxa
+        edited_name, ok = QInputDialog.getText(self, 'Edit name', 'Edit name of the label:')
+        if ok:
+            for label in self.list_of_labels:
+                if label[1] == self.current_label_cords:
+                    label[0] = edited_name
+            self.description.setText(edited_name)
+            self.listwidget.currentItem().setText("{} {}".format(edited_name, self.current_label_cords))
 
     def remove_label(self):
-        if shape is None:
-            return
-        item = self.shapes_to_items[shape]
-        self.label_list.takeItem(self.label_list.row(item))
-        del self.shapes_to_items[shape]
-        del self.items_to_shapes[item]
-        self.update_combo_box()
-        #usuniecie zaznaczonego bounding boxa
+        if self.list_of_labels:
+            for label in self.list_of_labels:
+                if label[1] == self.current_label_cords:
+                    self.list_of_labels.remove(label)
 
-    def save_rect(self, name, begin, end, photo_id):
-        self.list_of_labels.append([name, begin, end, photo_id])
+            self.rectangles.remove(self.rectangles[self.listwidget.currentRow()])
+            self.listwidget.takeItem(self.listwidget.currentRow())
+            self.begin = QPoint(0, 0)
+            self.end = QPoint(0, 0)
+            self.description.setText("")
+            self.update()
+
+    def save_rect(self, name, cords, photo_id):
+        self.list_of_labels.append([name, cords, photo_id])
+
+    def display_label(self, name, cords):
+        self.listwidget.addItem("{} {}".format(name, cords))
+
+    def highlight_label(self, item):
+        temp = item.text().split("[")
+        name, cords = temp[0], temp[1]
+        cords = cords[:-1].split(", ")
+        cords = list(map(int, cords))
+        self.current_label_cords = cords
+
+        self.description.move(cords[0], cords[3]-5)
+        self.description.setText(name)
 
     def paintEvent(self, event):
         if self.selecting:
             super().paintEvent(event)
             qp = QPainter(self)
             qp.drawPixmap(QRect(-1, -5, 641, 531), self.current_photo)
-            br = QBrush(QColor(255, 10, 10, 10))
+            br = QBrush(QColor(255, 10, 10, 80))
             qp.setBrush(br)
 
             for rectangle in self.rectangles:
@@ -233,9 +253,11 @@ class Ui_MainWindow(QMainWindow):
             self.textbox = QLineEdit(self)
             self.label_name, ok = QInputDialog.getText(self, 'Name label', 'Enter your label name:')
             if ok:
-                self.save_rect(self.label_name, self.begin, self.end, self.photo_displayed)
+                self.cords = [self.begin.x(), self.begin.y(), self.end.x(), self.end.y()]
+                self.save_rect(self.label_name, self.cords, self.photo_displayed)
+                self.display_label(self.label_name, self.cords)
 
-            print (self.list_of_labels)
+            print(self.list_of_labels)
 
 
 if __name__ == "__main__":
