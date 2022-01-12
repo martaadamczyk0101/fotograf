@@ -5,7 +5,9 @@ from PyQt5.QtGui import *
 from os import listdir
 from os.path import isfile, join
 import sys
-import re
+import datetime
+import json
+import imagesize
 
 class Ui_MainWindow(QMainWindow):
     def __init__(self):
@@ -14,6 +16,8 @@ class Ui_MainWindow(QMainWindow):
         self.list_of_labels = []
         self.rectangles = []
         self.photo_displayed = 0
+        self.categories = []
+        self.files = []
 
         self.window = MainWindow
 
@@ -50,7 +54,6 @@ class Ui_MainWindow(QMainWindow):
         self.photo.setText("")
         self.photo.setScaledContents(True)
         self.photo.setObjectName("photo")
-        self.current_photo = QPixmap('grape.jpg')
         self.prev = QtWidgets.QPushButton(self.centralwidget)
         self.prev.setGeometry(QtCore.QRect(240, 530, 81, 32))
         self.prev.setObjectName("prev")
@@ -91,6 +94,7 @@ class Ui_MainWindow(QMainWindow):
         self.select_btn.clicked.connect(self.select)
         self.edit_btn.clicked.connect(self.edit_label)
         self.remove_btn.clicked.connect(self.remove_label)
+        self.stats_btn.clicked.connect(self.show_stats)
 
         self.begin = QtCore.QPoint()
         self.end = QtCore.QPoint()
@@ -154,12 +158,73 @@ class Ui_MainWindow(QMainWindow):
             self.files = [f for f in listdir(self.chosen_dir) if isfile(join(self.chosen_dir, f))
                           and f.lower().endswith(('.png', '.jpg', '.jpeg', '.pneg'))]
             print(self.files)
+            self.current_photo = QPixmap(str(self.chosen_dir) + "/" + str(self.files[0]))
             self.photo.setPixmap(self.current_photo)
         except:
             pass
 
     def save(self):
-        pass
+        data_coco = {}
+        data_coco["info"] =\
+            {
+                "year": "2022",
+                "version": "1.0",
+                "description": "Test",
+                "contributor": "karol",
+                "url": "https://github.com/martaadamczyk0101/fotograf",
+                "date_created": str(datetime.datetime.now())
+            }
+        data_coco["licenses"] =\
+        [
+            {
+              "url": "http://creativecommons.org/licenses/by-nc-sa/2.0/",
+              "id": 0,
+              "name": "Attribution-NonCommercial-ShareAlike License"
+
+            }
+        ]
+
+        data_coco["images"] = []
+
+        for i in range(len(self.files)):
+            width, height = imagesize.get(str(self.chosen_dir)+"/"+str(self.files[i]))
+            dic = {"id": i,
+                    "license": 0,
+                    "file_name": self.files[i],
+                    "height": height,
+                    "width": width,
+                    "date_captured": None
+                   }
+            data_coco["images"].append(dic)
+
+        data_coco["categories"] = []
+
+        for i in range(len(self.categories)):
+            dic = {"id": i,
+                   "category": self.categories[i]
+                   }
+            data_coco["categories"].append(dic)
+
+        data_coco["annotations"] = []
+
+        for i in range(len(self.list_of_labels)):
+            for j in range(len(self.categories)):
+                if self.categories[j] == self.list_of_labels[i][0]:
+                    cat_id = j
+            dic = {"id": i,
+                    "image_id": self.list_of_labels[i][2],
+                    "category_id": cat_id,
+                    "bbox": self.list_of_labels[i][1],
+                    "segmentation": None,
+                    "area": None,
+                    "iscrowd": None
+                   }
+            data_coco["annotations"].append(dic)
+
+        print(data_coco)
+
+        json.dump(data_coco, open("test.json", "w"), indent=4)
+
         #zapisywanie
 
     def select(self):
@@ -180,7 +245,32 @@ class Ui_MainWindow(QMainWindow):
         #przelaczenie na tryb rysowania bounding boxow
 
     def show_stats(self):
-        pass
+        print("xdd")
+        stats = QMessageBox()
+        stats.setWindowTitle("Statistics")
+
+        labels_counted = {}
+
+        for label in self.list_of_labels:
+            if label[0] not in labels_counted:
+                labels_counted[label[0]] = 1
+            else:
+                labels_counted[label[0]] = labels_counted[label[0]] + 1
+
+        labels_counted = dict(sorted(labels_counted.items(),
+                                     key=lambda item: item[1],
+                                     reverse=True))
+        #print(labels_counted)
+
+        text = ""
+
+        for lab in labels_counted:
+            text += lab + ": " + str(labels_counted[lab]) + "\n"
+
+        stats.setText("Number of files loaded: {} \nNumber of annotations: {} \n"\
+                      .format(len(self.files),len(self.list_of_labels))+text)
+        stats.exec_()
+
         #wyswietlanie statystyk
 
     def edit_label(self):
@@ -253,6 +343,8 @@ class Ui_MainWindow(QMainWindow):
             self.textbox = QLineEdit(self)
             self.label_name, ok = QInputDialog.getText(self, 'Name label', 'Enter your label name:')
             if ok:
+                if self.label_name not in self.categories:
+                    self.categories.append(self.label_name)
                 self.cords = [self.begin.x(), self.begin.y(), self.end.x(), self.end.y()]
                 self.save_rect(self.label_name, self.cords, self.photo_displayed)
                 self.display_label(self.label_name, self.cords)
