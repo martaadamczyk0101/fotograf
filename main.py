@@ -20,6 +20,8 @@ class Ui_MainWindow(QMainWindow):
         self.files = []
         self.label_name = ""
         self.current_photo = None
+        self.coco_details = []
+        self.coco_dates = []
 
         self.window = MainWindow
 
@@ -109,6 +111,8 @@ class Ui_MainWindow(QMainWindow):
         self.begin = QtCore.QPoint()
         self.end = QtCore.QPoint()
         self.selecting = False
+        self.photo_date_bool = True
+        self.photo_detail_bool = True
 
         self.show()
 
@@ -141,6 +145,8 @@ class Ui_MainWindow(QMainWindow):
             self.select_btn.setText("Draw labels")
         except:
             print("Brak załadowanego folderu")
+        self.ask_for_date()
+        self.ask_for_details()
 
 
     #przelaczanie na poprzednie zdjecie
@@ -164,23 +170,56 @@ class Ui_MainWindow(QMainWindow):
             self.chosen_dir = QtWidgets.QFileDialog.getExistingDirectory(None, 'Select project folder:', '',
                                                               QtWidgets.QFileDialog.ShowDirsOnly)
 
-            print(self.chosen_dir)
             self.files = [f for f in listdir(self.chosen_dir) if isfile(join(self.chosen_dir, f))
                           and f.lower().endswith(('.png', '.jpg', '.jpeg', '.pneg'))]
-            print(self.files)
             self.current_photo = QPixmap(str(self.chosen_dir) + "/" + str(self.files[0]))
             self.photo.setPixmap(self.current_photo)
         except:
             pass
+        self.ask_for_name()
+        self.ask_for_date()
+        self.ask_for_details()
+
+    def ask_for_name(self):
+        self.textbox = QLineEdit(self)
+        self.contributor_name, ok = QInputDialog.getText(self, 'Your name', "Enter contributor's name")
+
+
+    def ask_for_date(self):
+        if self.photo_date_bool:
+            self.textbox = QLineEdit(self)
+            self.photo_date, ok = QInputDialog.getText(self, "Leave empty, if you don't want to complete this", "Enter date of capturing the photo")
+            if self.photo_date == "":
+                self.photo_date_bool = False
+                self.photo_date = None
+        self.coco_dates.append([self.photo_displayed, self.photo_date])
+        self.photo_date = None
+
+
+    def ask_for_details(self):
+        if self.photo_detail_bool:
+            self.textbox = QLineEdit(self)
+            self.photo_detail, ok = QInputDialog.getText(self, "Leave empty, if you don't want to complete this", "Enter category of this photo")
+            if self.photo_detail == "":
+                self.photo_detail_bool = False
+                self.photo_detail = None
+        self.coco_details.append([self.photo_displayed, self.photo_detail])
+        self.photo_detail = None
+
 
     def save(self):
+        self.textbox = QLineEdit(self)
+        self.coco_name, ok = QInputDialog.getText(self, 'Save to .COCO', "Enter file's name")
+        if self.coco_name == "":
+            self.coco_name = "unknown"
+
         data_coco = {}
         data_coco["info"] =\
             {
                 "year": "2022",
                 "version": "1.0",
                 "description": "Test",
-                "contributor": "karol",
+                "contributor": str(self.contributor_name),
                 "url": "https://github.com/martaadamczyk0101/fotograf",
                 "date_created": str(datetime.datetime.now())
             }
@@ -203,7 +242,8 @@ class Ui_MainWindow(QMainWindow):
                     "file_name": self.files[i],
                     "height": height,
                     "width": width,
-                    "date_captured": None
+                    "date_captured": self.coco_dates[i][1],
+                    "photo_category": self.coco_details[i][1]
                    }
             data_coco["images"].append(dic)
 
@@ -231,10 +271,8 @@ class Ui_MainWindow(QMainWindow):
                    }
             data_coco["annotations"].append(dic)
 
-        print(data_coco)
-
-        json.dump(data_coco, open("test.json", "w"), indent=4)
-
+        json.dump(data_coco, open("{}/{}.json".format(self.chosen_dir, self.coco_name), "w"), indent=4)
+        QMessageBox.about(self, "Saved", "COCO file successfully saved in the images folder.")
         #zapisywanie
 
     def load(self):
@@ -262,7 +300,6 @@ class Ui_MainWindow(QMainWindow):
         for label in self.list_of_labels:
             self.display_label(label[0], label[1])
 
-        print(self.list_of_labels)
 
     def name(self):
         self.textbox = QLineEdit(self)
@@ -278,19 +315,16 @@ class Ui_MainWindow(QMainWindow):
                 self.begin = QPoint()
                 self.end = QPoint()
                 self.select_btn.setText("Drawing labels...")
-                print('Drawing mode - true')
                 self.photo.clear()
 
             elif self.selecting:
                 self.selecting = False
                 self.select_btn.setText("Draw labels")
-                print('Drawing mode - false')
                 self.photo.setPixmap(self.current_photo)
 
         #przelaczenie na tryb rysowania bounding boxow
 
     def show_stats(self):
-        print("xdd")
         stats = QMessageBox()
         stats.setWindowTitle("Statistics")
 
@@ -363,7 +397,6 @@ class Ui_MainWindow(QMainWindow):
             qp.drawPixmap(QRect(-1, -5, 641, 531), self.current_photo)
             br = QBrush(QColor(255, 10, 10, 80))
             qp.setBrush(br)
-            print(self.rectangles)
             for rectangle in self.rectangles:
                 if rectangle[1] == self.photo_displayed:
                     qp.drawRect(rectangle[0])
@@ -392,7 +425,6 @@ class Ui_MainWindow(QMainWindow):
             self.save_rect(self.label_name, self.cords, self.photo_displayed)
             self.display_label(self.label_name, self.cords)
 
-            print(self.list_of_labels)
 
 
 if __name__ == "__main__":
