@@ -42,10 +42,13 @@ class Ui_MainWindow(QMainWindow):
         self.gridLayout.addWidget(self.save_btn, 1, 0, 1, 1)
         self.stats_btn = QtWidgets.QPushButton(self.gridLayoutWidget)
         self.stats_btn.setObjectName("stats_btn")
-        self.gridLayout.addWidget(self.stats_btn, 3, 0, 1, 1)
+        self.gridLayout.addWidget(self.stats_btn, 4, 0, 1, 1)
+        self.load_btn = QtWidgets.QPushButton(self.gridLayoutWidget)
+        self.load_btn.setObjectName("load_btn")
+        self.gridLayout.addWidget(self.load_btn, 2, 0, 1, 1)
         self.select_btn = QtWidgets.QPushButton(self.gridLayoutWidget)
         self.select_btn.setObjectName("select_btn")
-        self.gridLayout.addWidget(self.select_btn, 2, 0, 1, 1)
+        self.gridLayout.addWidget(self.select_btn, 3, 0, 1, 1)
         self.list = QtWidgets.QListWidget(self.centralwidget)
         self.list.setGeometry(QtCore.QRect(640, 200, 161, 361))
         self.list.setObjectName("list")
@@ -91,6 +94,7 @@ class Ui_MainWindow(QMainWindow):
         self.prev.clicked.connect(self.prev_photo)
         self.open_btn.clicked.connect(self.open_directory)
         self.save_btn.clicked.connect(self.save)
+        self.load_btn.clicked.connect(self.load)
         self.select_btn.clicked.connect(self.select)
         self.edit_btn.clicked.connect(self.edit_label)
         self.remove_btn.clicked.connect(self.remove_label)
@@ -107,7 +111,8 @@ class Ui_MainWindow(QMainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.open_btn.setText(_translate("MainWindow", "Open"))
-        self.save_btn.setText(_translate("MainWindow", "Save"))
+        self.save_btn.setText(_translate("MainWindow", "Save to COCO"))
+        self.load_btn.setText(_translate("MainWindow", "Load COCO file"))
         self.stats_btn.setText(_translate("MainWindow", "Show Statistics"))
         self.select_btn.setText(_translate("MainWindow", "Draw labels"))
         self.prev.setText(_translate("MainWindow", "<<"))
@@ -127,7 +132,6 @@ class Ui_MainWindow(QMainWindow):
             self.photo.setPixmap(self.current_photo)
             self.selecting = False
             self.select_btn.setText("Draw labels")
-            self.rectangles = []
         except:
             print("Brak załadowanego folderu")
 
@@ -143,7 +147,6 @@ class Ui_MainWindow(QMainWindow):
             self.photo.setPixmap(self.current_photo)
             self.selecting = False
             self.select_btn.setText("Draw labels")
-            self.rectangles = []
         except:
             print("Brak załadowanego folderu")
 
@@ -227,6 +230,33 @@ class Ui_MainWindow(QMainWindow):
 
         #zapisywanie
 
+    def load(self):
+        path_coco = QFileDialog.getOpenFileName(self, "Load COCO file", "~", "JSON files (*.json)")
+        with open(path_coco[0]) as jsonFile:
+            loaded_data = json.load(jsonFile)
+            jsonFile.close()
+
+        self.list_of_labels = []
+
+        for ann in loaded_data['annotations']:
+            temp_list = [ann['category_id'], ann['bbox'], ann['image_id']]
+            begin = QPoint(ann['bbox'][0], ann['bbox'][1])
+            end = QPoint(ann['bbox'][2], ann['bbox'][3])
+            r = QRect(begin, end)
+
+            self.rectangles.append([r, ann['image_id']])
+            self.list_of_labels.append(temp_list)
+
+        for ann in self.list_of_labels:
+            for category in loaded_data['categories']:
+                if ann[0] == category['id']:
+                    ann[0] = category['category']
+
+        for label in self.list_of_labels:
+            self.display_label(label[0], label[1])
+
+        print(self.list_of_labels)
+
     def select(self):
         if not self.selecting:
             self.selecting = True
@@ -271,7 +301,7 @@ class Ui_MainWindow(QMainWindow):
                       .format(len(self.files),len(self.list_of_labels))+text)
         stats.exec_()
 
-        #wyswietlanie statystyk
+
 
     def edit_label(self):
         edited_name, ok = QInputDialog.getText(self, 'Edit name', 'Edit name of the label:')
@@ -318,9 +348,10 @@ class Ui_MainWindow(QMainWindow):
             qp.drawPixmap(QRect(-1, -5, 641, 531), self.current_photo)
             br = QBrush(QColor(255, 10, 10, 80))
             qp.setBrush(br)
-
+            print(self.rectangles)
             for rectangle in self.rectangles:
-                qp.drawRect(rectangle)
+                if rectangle[1] == self.photo_displayed:
+                    qp.drawRect(rectangle[0])
 
             if not self.begin.isNull() and not self.end.isNull():
                 qp.drawRect(QRect(self.begin, self.end).normalized())
@@ -338,7 +369,8 @@ class Ui_MainWindow(QMainWindow):
         if self.selecting:
             self.end = event.pos()
             r = QRect(self.begin, self.end).normalized()
-            self.rectangles.append(r)
+
+            self.rectangles.append([r, self.photo_displayed])
 
             self.textbox = QLineEdit(self)
             self.label_name, ok = QInputDialog.getText(self, 'Name label', 'Enter your label name:')
