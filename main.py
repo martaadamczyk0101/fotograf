@@ -18,6 +18,8 @@ class Ui_MainWindow(QMainWindow):
         self.photo_displayed = 0
         self.categories = []
         self.files = []
+        self.label_name = ""
+        self.current_photo = None
 
         self.window = MainWindow
 
@@ -42,13 +44,16 @@ class Ui_MainWindow(QMainWindow):
         self.gridLayout.addWidget(self.save_btn, 1, 0, 1, 1)
         self.stats_btn = QtWidgets.QPushButton(self.gridLayoutWidget)
         self.stats_btn.setObjectName("stats_btn")
-        self.gridLayout.addWidget(self.stats_btn, 4, 0, 1, 1)
+        self.gridLayout.addWidget(self.stats_btn, 5, 0, 1, 1)
         self.load_btn = QtWidgets.QPushButton(self.gridLayoutWidget)
         self.load_btn.setObjectName("load_btn")
         self.gridLayout.addWidget(self.load_btn, 2, 0, 1, 1)
         self.select_btn = QtWidgets.QPushButton(self.gridLayoutWidget)
         self.select_btn.setObjectName("select_btn")
         self.gridLayout.addWidget(self.select_btn, 3, 0, 1, 1)
+        self.name_btn = QtWidgets.QPushButton(self.gridLayoutWidget)
+        self.name_btn.setObjectName("name_btn")
+        self.gridLayout.addWidget(self.name_btn, 4, 0, 1, 1)
         self.list = QtWidgets.QListWidget(self.centralwidget)
         self.list.setGeometry(QtCore.QRect(640, 200, 161, 361))
         self.list.setObjectName("list")
@@ -94,6 +99,7 @@ class Ui_MainWindow(QMainWindow):
         self.prev.clicked.connect(self.prev_photo)
         self.open_btn.clicked.connect(self.open_directory)
         self.save_btn.clicked.connect(self.save)
+        self.name_btn.clicked.connect(self.name)
         self.load_btn.clicked.connect(self.load)
         self.select_btn.clicked.connect(self.select)
         self.edit_btn.clicked.connect(self.edit_label)
@@ -112,6 +118,7 @@ class Ui_MainWindow(QMainWindow):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.open_btn.setText(_translate("MainWindow", "Open"))
         self.save_btn.setText(_translate("MainWindow", "Save to COCO"))
+        self.name_btn.setText(_translate("MainWindow", "Set label name"))
         self.load_btn.setText(_translate("MainWindow", "Load COCO file"))
         self.stats_btn.setText(_translate("MainWindow", "Show Statistics"))
         self.select_btn.setText(_translate("MainWindow", "Draw labels"))
@@ -257,20 +264,28 @@ class Ui_MainWindow(QMainWindow):
 
         print(self.list_of_labels)
 
-    def select(self):
-        if not self.selecting:
-            self.selecting = True
-            self.begin = QPoint()
-            self.end = QPoint()
-            self.select_btn.setText("Drawing labels...")
-            print('Drawing mode - true')
-            self.photo.clear()
+    def name(self):
+        self.textbox = QLineEdit(self)
+        self.label_name, ok = QInputDialog.getText(self, 'Name label', 'Enter your label name:')
+        if ok:
+            if self.label_name not in self.categories:
+                self.categories.append(self.label_name)
 
-        elif self.selecting:
-            self.selecting = False
-            self.select_btn.setText("Draw labels")
-            print('Drawing mode - false')
-            self.photo.setPixmap(self.current_photo)
+    def select(self):
+        if self.current_photo:
+            if not self.selecting:
+                self.selecting = True
+                self.begin = QPoint()
+                self.end = QPoint()
+                self.select_btn.setText("Drawing labels...")
+                print('Drawing mode - true')
+                self.photo.clear()
+
+            elif self.selecting:
+                self.selecting = False
+                self.select_btn.setText("Draw labels")
+                print('Drawing mode - false')
+                self.photo.setPixmap(self.current_photo)
 
         #przelaczenie na tryb rysowania bounding boxow
 
@@ -372,14 +387,10 @@ class Ui_MainWindow(QMainWindow):
 
             self.rectangles.append([r, self.photo_displayed])
 
-            self.textbox = QLineEdit(self)
-            self.label_name, ok = QInputDialog.getText(self, 'Name label', 'Enter your label name:')
-            if ok:
-                if self.label_name not in self.categories:
-                    self.categories.append(self.label_name)
-                self.cords = [self.begin.x(), self.begin.y(), self.end.x(), self.end.y()]
-                self.save_rect(self.label_name, self.cords, self.photo_displayed)
-                self.display_label(self.label_name, self.cords)
+
+            self.cords = [self.begin.x(), self.begin.y(), self.end.x(), self.end.y()]
+            self.save_rect(self.label_name, self.cords, self.photo_displayed)
+            self.display_label(self.label_name, self.cords)
 
             print(self.list_of_labels)
 
