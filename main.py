@@ -22,6 +22,7 @@ class Ui_MainWindow(QMainWindow):
         self.current_photo = None
         self.coco_details = []
         self.coco_dates = []
+        self.cat_id = None
 
         self.window = MainWindow
 
@@ -237,14 +238,24 @@ class Ui_MainWindow(QMainWindow):
 
         for i in range(len(self.files)):
             width, height = imagesize.get(str(self.chosen_dir)+"/"+str(self.files[i]))
-            dic = {"id": i,
-                    "license": 0,
-                    "file_name": self.files[i],
-                    "height": height,
-                    "width": width,
-                    "date_captured": self.coco_dates[i][1],
-                    "photo_category": self.coco_details[i][1]
-                   }
+            if len(self.coco_dates)==len(self.files) and len(self.coco_details)==len(self.files):
+                dic = {"id": i,
+                        "license": 0,
+                        "file_name": self.files[i],
+                        "height": height,
+                        "width": width,
+                        "date_captured": self.coco_dates[i][1],
+                        "photo_category": self.coco_details[i][1]
+                       }
+            else:
+                dic = {"id": i,
+                        "license": 0,
+                        "file_name": self.files[i],
+                        "height": height,
+                        "width": width,
+                        "date_captured": None,
+                        "photo_category": None
+                       }
             data_coco["images"].append(dic)
 
         data_coco["categories"] = []
@@ -260,10 +271,10 @@ class Ui_MainWindow(QMainWindow):
         for i in range(len(self.list_of_labels)):
             for j in range(len(self.categories)):
                 if self.categories[j] == self.list_of_labels[i][0]:
-                    cat_id = j
+                    self.cat_id = j
             dic = {"id": i,
                     "image_id": self.list_of_labels[i][2],
-                    "category_id": cat_id,
+                    "category_id": self.cat_id,
                     "bbox": self.list_of_labels[i][1],
                     "segmentation": None,
                     "area": None,
